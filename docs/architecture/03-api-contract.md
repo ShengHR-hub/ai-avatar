@@ -1,8 +1,8 @@
 # AI Avatar Studio V1.0 REST API 契约
 
-> 前缀：`/api/v1`  
-> 认证：HttpOnly Session Cookie  
-> 异步创建：`202 Accepted`  
+> 前缀：`/api/v1`
+> 认证：HttpOnly Session Cookie
+> 异步创建：`202 Accepted`
 > 状态：已冻结
 
 ## 1. 契约来源

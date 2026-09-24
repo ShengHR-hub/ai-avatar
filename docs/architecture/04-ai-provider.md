@@ -1,7 +1,7 @@
 # AI Avatar Studio V1.0 AI Provider 架构
 
-> 状态：已冻结  
-> 调用方式：Provider Adapter  
+> 状态：已冻结
+> 调用方式：Provider Adapter
 > 目标：隔离供应商差异，保证任务、成本和账务可恢复
 
 ## 1. 调用边界

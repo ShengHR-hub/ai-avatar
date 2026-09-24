@@ -1,8 +1,8 @@
 # AI Avatar Studio V1.0 数据库设计
 
-> 数据库：PostgreSQL  
-> 主键：UUID  
-> 时间：UTC `timestamptz`  
+> 数据库：PostgreSQL
+> 主键：UUID
+> 时间：UTC `timestamptz`
 > 状态：已冻结
 
 ## 1. 数据库原则
