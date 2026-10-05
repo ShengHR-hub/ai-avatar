@@ -1,0 +1,20 @@
+SQLAlchemy>=2.0.36,<2.1
+alembic>=1.14,<2.0
+psycopg[binary]>=3.2,<4.0
+pytest>=8.3,<9.0
+
+# ENG-02：FastAPI 基础服务与 API 测试
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.34,<1.0
+httpx>=0.28,<1.0
+pytest-asyncio>=0.25,<1.0
+
+# ENG-03：Redis opaque Session 与邮箱令牌存储
+redis>=5.2,<6.0
+
+# ENG-05：对象存储驱动（仅驱动模块导入）与图片完整解码校验
+minio>=7.2,<8.0
+Pillow>=11.0,<12.0
+
+# ENG-06：Celery Worker/Beat 编排（只有 app/tasks 导入；Web 进程按任务名投递）
+celery>=5.4,<6.0

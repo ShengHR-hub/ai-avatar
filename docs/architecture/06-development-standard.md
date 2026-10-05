@@ -12,6 +12,7 @@
 5. 所有涉及点数、订单和任务结算的修改必须有事务和幂等测试。
 6. 代码变更必须同步更新受影响的 OpenAPI、迁移和架构文档。
 7. 密钥、令牌、真实用户图片和敏感日志不得提交到仓库。
+8. V1.0 代码只能落在 `frontend/`、`backend/`、`shared/`、`docker/` 和 `scripts/` 的职责范围内；旧测试版文件不是迁移输入。
 
 ## 2. 后端分层
 
@@ -81,6 +82,14 @@ Service
 - 隐式提交事务。
 
 事务由 Service 控制，Repository 不自行 `commit`。
+
+### 目录与进程边界
+
+- `backend/app/main.py` 只提供 FastAPI 入口；`backend/app/tasks/` 提供 Celery Worker/Beat 启动入口。
+- API、Worker、Beat 共享后端 Service/Repository，但分别由 `uvicorn`、Celery Worker 和 Celery Beat 进程启动。
+- Worker 和 Beat 不对外暴露业务 HTTP 端口；Beat 只向 Redis 投递已注册任务，Worker 才执行任务。
+- `frontend/` 只能通过 REST/OpenAPI 客户端调用 FastAPI；不得导入后端 Python、访问数据库或对象存储私有凭据。
+- `shared/` 只保存 OpenAPI 和语言无关契约产物，不复制业务运行时代码。
 
 ### Celery Task
 
@@ -178,8 +187,11 @@ public/       静态资源
 - 原图二进制或 Base64；
 - 完整 Provider 原始响应；
 - 未脱敏的个人信息。
+- 签名 URL、完整环境变量、对象存储访问凭据和完整 Prompt。
 
 异常必须保留内部诊断信息，但用户响应只返回稳定错误码和安全说明。
+
+服务端密钥只允许出现在 FastAPI、Worker、Beat 的服务端环境变量中；前端公开变量只能使用 `NEXT_PUBLIC_*` 的非敏感配置。浏览器日志不得包含 Cookie、Authorization、上传内容或完整响应。
 
 ## 7. 测试要求
 

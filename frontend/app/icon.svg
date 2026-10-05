@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AI Avatar Studio">
+<defs><clipPath id="a"><circle cx="32" cy="32" r="18"/></clipPath></defs>
+<rect width="64" height="64" rx="15" fill="#0b0d11"/>
+<g clip-path="url(#a)" stroke="#ecb972" stroke-width="1.7" fill="none" opacity="0.85"><path d="M12.00 24.00L52.00 24.00"/><path d="M28.93 10.68L48.93 45.32"/><path d="M48.93 18.68L28.93 53.32"/><path d="M52.00 40.00L12.00 40.00"/><path d="M35.07 53.32L15.07 18.68"/><path d="M15.07 45.32L35.07 10.68"/></g>
+<circle cx="32" cy="32" r="19" fill="none" stroke="#f3f5f8" stroke-opacity="0.5" stroke-width="1.7"/>
+</svg>

@@ -1,0 +1,33 @@
+{
+  "name": "ai-avatar-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI Avatar Studio V1.0 frontend (ENG-08): 生成工作流与用户页面，只消费冻结的 OpenAPI 契约。",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "generate:api": "openapi-ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "jsdom": "30.1.1",
+    "typescript": "5.9.3",
+    "vitest": "5.0.2"
+  }
+}

@@ -1,0 +1,16 @@
+# 构建上下文是 `frontend/`（见 `docker/compose.yml` 的 `build.context`）。
+
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# 测试与缓存
+coverage/
+.vitest/
+*.log
+
+# 绝不进镜像：环境文件与密钥
+.env
+.env.*

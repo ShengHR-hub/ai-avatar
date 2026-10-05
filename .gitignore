@@ -1,0 +1,60 @@
+# AI Avatar Studio V1.0
+# 仓库只含 V1.0：backend（FastAPI）/ frontend（Next.js）/ shared（契约）/ docker（编排）
+
+# ---- 依赖 ----
+/frontend/node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# ---- 构建产物 ----
+/frontend/.next/
+/frontend/out/
+*.tsbuildinfo
+next-env.d.ts
+
+# ---- 环境变量：绝不提交任何真实凭据 ----
+.env
+.env.*
+!.env.example
+!docker/.env.example
+
+# ---- 测试与缓存 ----
+.pytest_cache/
+.coverage
+htmlcov/
+/.pytest-tmp-*/
+/.review-*/
+/.tmp-*/
+/.venv-*/
+**/.pytest-tmp-*/
+**/.review-*/
+**/.tmp-*/
+**/.venv-*/
+**/.tmp-*
+**/pytest-*.log
+pytest-*.log
+**/artifacts/
+
+# ---- 本地进程运行态 ----
+# `celery ... beat` 不带 `--schedule` 时会把调度状态写在工作目录。
+# scripts/eng10_ui_stack.py 已经把它指到仓库外，这里再兜一层，
+# 避免任何本地跑法把运行态文件留在仓库里。
+celerybeat-schedule
+celerybeat-schedule-*
+celerybeat.pid
+
+# ---- 运行时数据 ----
+/data/
+/ex/
+/.workbuddy-ai/
+/backend/.pt1/
+
+# ---- misc ----
+.DS_Store
+*.pem
+.vercel
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

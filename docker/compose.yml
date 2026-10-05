@@ -1,0 +1,227 @@
+# ============================================================================
+# AI Avatar Studio V1.0 — 本地编排（唯一规范文件）
+#
+# 依据：docs/architecture/09-repository-boundary.md 第 5 节、ENG-10。
+#
+# ## 隔离能力（ENG-10 新增，默认值一字未变）
+#
+# 上面每一处「名字」都可以用环境变量覆盖，因此同一份 compose.yml 既能作为
+# 默认本地环境（`ai-avatar-v1`），也能在**不碰既有环境**的前提下起第二套完全
+# 隔离的验收栈（ENG-10 用 `-p ai-avatar-eng10` + `.env.eng10`）：
+#
+#   COMPOSE_PROJECT_NAME / IMAGE_TAG_SUFFIX / NETWORK_NAME
+#   POSTGRES_VOLUME / REDIS_VOLUME / MINIO_VOLUME
+#   POSTGRES_HOST_PORT / REDIS_HOST_PORT / MINIO_HOST_PORT / MINIO_CONSOLE_HOST_PORT
+#   BACKEND_HOST_PORT / FRONTEND_HOST_PORT
+#
+# 这些覆盖**只改变宿主端口与资源命名**，不改变任何服务语义、健康检查、依赖顺序
+# 或业务契约；默认值与前一轮逐字一致（`${VAR:-默认}`）。
+#
+# ## 容器内生成的对象存储 URL 必须对浏览器可达
+#
+# 上传/下载走的是**预签名 URL**，而它由 `STORAGE_ENDPOINT` 决定主机名。若把
+# `STORAGE_ENDPOINT` 写成 `http://minio:9000`，浏览器拿到的地址就是
+# `http://minio:9000/...`（容器 DNS 名），在真实浏览器里必然解析失败。
+# 因此验收形态把后端指向 `host.docker.internal:<宿主 MinIO 端口>`：
+# 容器网络与宿主浏览器**都能**解析这个地址。`extra_hosts` 让它在 Linux 容器
+# 运行时也成立（Docker Desktop 在 Windows/macOS 上本来就注入该名称）。
+# ============================================================================
+name: ai-avatar-v1
+
+x-extra-hosts: &extra-hosts
+  - "host.docker.internal:host-gateway"
+
+services:
+  frontend:
+    image: ai-avatar-frontend:${IMAGE_TAG_SUFFIX:-v1}
+    # 构建上下文是 `frontend/`（相对本文件所在目录）。三个 ARG 都是**构建期**值：
+    # `NEXT_PUBLIC_*` 会被内联进浏览器 bundle，`API_PROXY_TARGET` 会被写进
+    # `routes-manifest.json` 的 rewrites —— 运行期再传 `-e` 是无效的。
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        API_PROXY_TARGET: ${API_PROXY_TARGET:-http://backend:8000}
+    command: ["npm", "run", "start"]
+    environment:
+      # 浏览器侧：**相对同源**，必须与 Next 的同源代理配套（见 next.config.mjs）。
+      # 这个值是构建期被内联进浏览器 bundle 的，所以它不能指向容器内的主机名；
+      # 写绝对地址（http://localhost:8000/api/v1）会让浏览器直连后端并变成跨源请求。
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      # 服务端侧：Next 进程把 /api/v1/** 转发到这里。容器里后端就是服务名 backend，
+      # 因此不需要走宿主端口，也不受宿主端口占用影响。
+      # 注意：Next 在**构建期**把 rewrites 写进 routes-manifest.json，改这个值要重新 build。
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://backend:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # 只绑 loopback：浏览器在宿主机上访问，不对外暴露。
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-3000}:3000"
+    extra_hosts: *extra-hosts
+    networks:
+      - private
+
+  backend:
+    image: ai-avatar-backend:${IMAGE_TAG_SUFFIX:-v1}
+    # `backend` / `worker` / `beat` 共用同一镜像：同一份服务端代码、不同启动命令。
+    # Compose 会按镜像名去重，只构建一次。
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment: &backend-environment
+      APP_ENV: ${APP_ENV:-local}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8000}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://ai_avatar:placeholder@postgres:5432/ai_avatar}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-minio}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-ai-avatar}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-placeholder}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-placeholder}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      # 「参考图片找灵感」用的视觉型号：与 AI_MODEL 分开，出图型号读不了图。
+      # ENABLE_IMAGE_ANALYSIS 默认关闭——这条能力会出网付费，必须由部署方显式打开；
+      # 开了但没配 AI_VISION_MODEL（真实 provider 下）会在装配时响亮报错，不会退回 Mock。
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-}
+      ENABLE_IMAGE_ANALYSIS: ${ENABLE_IMAGE_ANALYSIS:-false}
+      # 付费闸门：按 UTC 日历日计数，超限返回 429。默认值刻意保守——
+      # 全局 50 次/日是「最坏情况一天的支出上限」，不是容量规划。
+      ANALYSIS_DAILY_LIMIT_PER_USER: ${ANALYSIS_DAILY_LIMIT_PER_USER:-10}
+      ANALYSIS_GLOBAL_DAILY_LIMIT: ${ANALYSIS_GLOBAL_DAILY_LIMIT:-50}
+      SESSION_SECRET: ${SESSION_SECRET:-placeholder}
+      ENABLE_REFERENCE_IMAGE: ${ENABLE_REFERENCE_IMAGE:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      # 只绑 loopback；端口可覆盖（本机常有别的项目占着 8000）。
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8000}:8000"
+    healthcheck:
+      # 契约路径带 `/api/v1` 前缀；写 `/health/ready` 会让健康检查永远 404，
+      # 于是 `depends_on: condition: service_healthy` 把整个 Compose 卡死在启动阶段。
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8000/api/v1/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    extra_hosts: *extra-hosts
+    networks:
+      - private
+
+  worker:
+    image: ai-avatar-backend:${IMAGE_TAG_SUFFIX:-v1}
+    command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=INFO"]
+    environment: *backend-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    extra_hosts: *extra-hosts
+    networks:
+      - private
+
+  beat:
+    image: ai-avatar-backend:${IMAGE_TAG_SUFFIX:-v1}
+    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=INFO"]
+    environment: *backend-environment
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts: *extra-hosts
+    networks:
+      - private
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_avatar}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_avatar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-placeholder}
+    ports:
+      # 仅绑定宿主 loopback，供宿主机上运行的 tests/db 使用；不对外暴露。
+      # 端口可覆盖：本机常有别的项目占着 5432。
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - private
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      # 仅绑定宿主 loopback：宿主机上直接跑 uvicorn/celery（本仓库镜像尚未定义
+      # Dockerfile）时需要连到这里；不对外暴露，也不设密码——与 postgres 同一信任边界。
+      # 端口可覆盖：本机常有别的项目占着 6379/9000，默认值保持不变，冲突时只在
+      # 启动时传 REDIS_HOST_PORT / MINIO_HOST_PORT / MINIO_CONSOLE_HOST_PORT。
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - private
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    ports:
+      # 默认只绑 loopback（与 postgres/redis 同一信任边界）。
+      #
+      # `MINIO_HOST_BIND` 是给**容器内先签名、浏览器后取图**这条真实链路留的覆盖点：
+      # 预签名 URL 的 Host 来自 `STORAGE_ENDPOINT`，而浏览器与后端容器必须都能解析
+      # 同一个名字。当后端把 `STORAGE_ENDPOINT` 指向 `host.docker.internal` 时，
+      # 只绑 127.0.0.1 会让容器侧的连接被拒（实测：`Test-NetConnection` 返回 False，
+      # 上传直接 502）。此时把它设为 `0.0.0.0` 即可 —— 或者按需绑定到 Docker VM
+      # 能到达的那个接口，范围更小。
+      - "${MINIO_HOST_BIND:-127.0.0.1}:${MINIO_HOST_PORT:-9000}:9000"
+      - "${MINIO_HOST_BIND:-127.0.0.1}:${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-placeholder}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-placeholder}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - private
+
+networks:
+  private:
+    name: ${NETWORK_NAME:-ai-avatar-v1-private}
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: ${POSTGRES_VOLUME:-ai-avatar-v1-postgres}
+  redis_data:
+    name: ${REDIS_VOLUME:-ai-avatar-v1-redis}
+  minio_data:
+    name: ${MINIO_VOLUME:-ai-avatar-v1-minio}

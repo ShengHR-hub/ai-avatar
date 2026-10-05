@@ -59,6 +59,12 @@ Celery Worker 调用 AI Provider
 9. 所有可能重复提交的写接口必须幂等。
 10. 本地与生产只更换配置和基础设施连接，不改变业务代码。
 
+## 4.1 V1.0 仓库与进程基线
+
+V1.0 的正式仓库边界、服务职责、依赖方向、本地 Compose 拓扑、环境变量和日志安全规则统一见 [仓库边界与本地进程基线](./09-repository-boundary.md)。该文件是 `LEAD-01` 的冻结补充，不改变本文件及后续契约中的业务规则。
+
+V1.0 目标目录固定为 `frontend/`、`backend/`、`shared/`、`docs/`、`docker/` 和 `scripts/`。当前仓库中的旧测试版布局不属于 V1.0 目录，也不是迁移或复用前提。
+
 ## 5. 系统边界
 
 第一阶段包含：
@@ -104,3 +110,4 @@ Celery Worker 调用 AI Provider
 - [系统架构与部署](./05-system-architecture.md)
 - [开发规范与代码约束](./06-development-standard.md)
 - [开发阶段路线图](./07-development-roadmap.md)
+- [仓库边界与本地进程基线](./09-repository-boundary.md)

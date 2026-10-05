@@ -1,0 +1,137 @@
+# ============================================================================
+# ENG-10 E2E 覆盖文件（**只用于测试**，不是部署形态）
+#
+# 用法：
+#   docker compose --env-file .env.eng10 -p ai-avatar-eng10 \
+#     -f docker/compose.yml -f docker/compose.e2e.yml up -d --build
+#
+# ## 为什么需要它
+#
+# `EmailPort` 是 ENG-03 冻结的端口，但**没有任何本地实现**：
+# `app/services/ports.py::get_email_port()` 返回 `UnavailableEmailPort`，
+# 真实进程里 `POST /api/v1/auth/email/request` 会 503。而契约
+# `03-api-contract.md` 第 12 节第 2 项把「邮件供应商」明确列为**未决项**。
+# 没有可用的邮件传输，本地闭环就走不到「邮箱已验证 → 上传」这一步。
+#
+# 因此本文件把 **ENG-10 的浏览器 E2E** 指向 `tests/e2e/local_server.py`：
+# 它 create_app() 之后只覆盖 `get_email_port_dep` 一个依赖，把验证邮件写进
+# 宿主目录；路由、中间件、异常处理器、配置、数据库、Redis、对象存储、Service、
+# Repository、账务规则全部是**生产实现**。做法与既有
+# `tests/api/test_auth_endpoints.py` 完全一致。
+#
+# `tests/` 被 `backend/.dockerignore` 排除、**不进生产镜像**，所以这里以
+# **只读挂载**提供；`ai-avatar-backend:v1-eng10` 本身一个字节都没变。
+#
+# ## 与主 API 的关系
+#
+# `backend-e2e` 与 compose.yml 的 `backend` 是**同一份代码、同一个镜像、同一个库**，
+# 只是入口模块与端口不同：
+#
+#   backend      :8000（容器内）→ 宿主 18000   真实入口
+#   backend-e2e  :8000（容器内）→ 宿主 18001   邮件替身入口，宿主 pytest 与**浏览器**都用它
+#
+# 本文件同时把 `frontend` 的 `API_PROXY_TARGET` 指向 `backend-e2e`：浏览器打
+# `/api/v1/**` 时经过的就是**测试入口**，与宿主侧断言的是同一个库 / Redis / MinIO。
+# 该值是构建期值，因此 E2E 形态必须 `--build` 重建前端镜像。
+#
+# 场景 Worker **不在这里定义**：`MockProvider` 的场景在真实 Worker 进程里没有选择
+# 入口（这是刻意的），失败/UNKNOWN 两条结算矩阵由 `tests/e2e/scenario_runner.py`
+# 在**独立进程**里驱动真实的 `app.tasks.worker.run_generation`。
+# ============================================================================
+
+services:
+  backend:
+    environment:
+      # 这两项**不写死**：预签名 URL 的 Host 来自 STORAGE_ENDPOINT，而「容器能连」
+      # 与「宿主浏览器能连」要求同一个地址。写死 `host.docker.internal` 在宿主侧
+      # hosts 条目陈旧/缺失的机器上会直接失效（实测：宿主把它解析到一个**不是本机接口**
+      # 的陈旧地址，TCP 可连但无响应）。因此改成可覆盖，默认值保持与原来一致。
+      APP_BASE_URL: ${APP_BASE_URL:-http://127.0.0.1:18000}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://host.docker.internal:19000}
+
+  worker:
+    environment:
+      APP_BASE_URL: ${APP_BASE_URL:-http://127.0.0.1:18000}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://host.docker.internal:19000}
+
+  beat:
+    environment:
+      APP_BASE_URL: ${APP_BASE_URL:-http://127.0.0.1:18000}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://host.docker.internal:19000}
+
+  backend-e2e:
+    image: ai-avatar-backend:${IMAGE_TAG_SUFFIX:-v1}
+    command:
+      [
+        "python",
+        "-m",
+        "uvicorn",
+        "tests.e2e.local_server:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+      ]
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_BASE_URL: http://127.0.0.1:18001
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://ai_avatar:placeholder@postgres:5432/ai_avatar}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-minio}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://host.docker.internal:19000}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-ai-avatar}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-placeholder}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-placeholder}
+      AI_PROVIDER: mock
+      AI_BASE_URL: ""
+      AI_MODEL: ""
+      AI_API_KEY: ""
+      AI_VISION_MODEL: ""
+      ENABLE_IMAGE_ANALYSIS: "false"
+      ENABLE_REFERENCE_IMAGE: "false"
+      SESSION_SECRET: ${SESSION_SECRET:-placeholder}
+      # 邮件落盘目录：容器写、宿主 pytest 读（同一个绑定挂载）
+      ENG10_MAIL_DIR: /eng10/mail
+    volumes:
+      # 只读挂载 E2E 测试代码（生产镜像里没有 tests/）
+      - ../backend/tests:/app/tests:ro
+      - ${ENG10_MAIL_HOST_DIR:-D:/tmp/eng10-run/mail}:/eng10/mail
+    working_dir: /app
+    ports:
+      - "127.0.0.1:${BACKEND_E2E_HOST_PORT:-18001}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - private
+
+  frontend:
+    # E2E 形态下把 Next 的同源代理指向**测试入口** `backend-e2e`，而不是生产入口 `backend`：
+    # `EntryPanel` 的「发验证邮件」按钮会从浏览器打 `/api/v1/auth/email/request`，
+    # 而只有 `backend-e2e` 覆盖了 `get_email_port_dep`（邮件落盘）。两个容器是
+    # **同一镜像、同一个库、同一套 Redis 与 MinIO**，因此浏览器侧与宿主侧看到的是
+    # 同一个隔离栈，只是入口模块不同。
+    #
+    # `API_PROXY_TARGET` 是**构建期**值（写进 routes-manifest.json 的 rewrites），
+    # 所以这里同时覆盖 build.args 与运行期环境，并要求用 `--build` 重建前端镜像。
+    #
+    # 直接写容器网络内的**服务名**，不走 `${API_PROXY_TARGET:-...}`：
+    # 后者会被 `.env.eng10` 里为「七服务形态」准备的 `http://backend:8000` 顶掉，
+    # 于是 E2E 形态下浏览器打的还是生产入口（实测踩到：manifest 里仍是 backend:8000）。
+    build:
+      args:
+        API_PROXY_TARGET: http://backend-e2e:8000
+    environment:
+      API_PROXY_TARGET: http://backend-e2e:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+      backend-e2e:
+        condition: service_started

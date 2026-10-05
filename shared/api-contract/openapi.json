@@ -1,0 +1,185 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AI Avatar Studio V1.0 API",
+    "version": "1.0.0",
+    "description": "LEAD-03 frozen REST contract. Runtime source is FastAPI/Pydantic; this file is the checked-in baseline."
+  },
+  "servers": [{ "url": "/" }],
+  "tags": [
+    { "name": "auth" },
+    { "name": "me" },
+    { "name": "assets" },
+    { "name": "analysis" },
+    { "name": "generations" },
+    { "name": "shares" },
+    { "name": "feedback" },
+    { "name": "health" },
+    { "name": "internal", "x-internal": true },
+    { "name": "admin", "x-internal": true }
+  ],
+  "paths": {
+    "/api/v1/auth/invites/redeem": {
+      "post": { "operationId": "redeemInvite", "tags": ["auth"], "security": [], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/InviteRedeem" }, "responses": { "201": { "$ref": "#/components/responses/InviteRedeemed" }, "400": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/auth/email/request": {
+      "post": { "operationId": "requestEmailVerification", "tags": ["auth"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/EmailRequest" }, "responses": { "202": { "$ref": "#/components/responses/Accepted" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/auth/email/verify": {
+      "post": { "operationId": "verifyEmail", "tags": ["auth"], "security": [], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/EmailVerify" }, "responses": { "200": { "$ref": "#/components/responses/User" }, "409": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/auth/session": {
+      "get": { "operationId": "getSession", "tags": ["auth"], "security": [{ "sessionCookie": [] }], "responses": { "200": { "$ref": "#/components/responses/Session" }, "401": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/auth/logout": {
+      "post": { "operationId": "logout", "tags": ["auth"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "responses": { "204": { "description": "Session revoked" }, "401": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/me": {
+      "get": { "operationId": "getMe", "tags": ["me"], "security": [{ "sessionCookie": [] }], "responses": { "200": { "$ref": "#/components/responses/User" }, "401": { "$ref": "#/components/responses/Error" } } },
+      "patch": { "operationId": "updateMe", "tags": ["me"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/UpdateMe" }, "responses": { "200": { "$ref": "#/components/responses/User" }, "401": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/me/points": {
+      "get": { "operationId": "getPointBalance", "tags": ["me"], "security": [{ "sessionCookie": [] }], "responses": { "200": { "$ref": "#/components/responses/PointBalance" }, "401": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/me/points/ledger": {
+      "get": { "operationId": "listPointLedger", "tags": ["me"], "security": [{ "sessionCookie": [] }], "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/PointLedgerPage" }, "401": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/assets/uploads": {
+      "post": { "operationId": "createAssetUpload", "tags": ["assets"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/UploadIntent" }, "responses": { "201": { "$ref": "#/components/responses/AssetUpload" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "413": { "$ref": "#/components/responses/Error" }, "415": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/assets/{asset_id}/complete": {
+      "post": { "operationId": "completeAssetUpload", "tags": ["assets"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }, { "$ref": "#/components/parameters/AssetId" }], "responses": { "200": { "$ref": "#/components/responses/Asset" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/assets/{asset_id}": {
+      "get": { "operationId": "getAsset", "tags": ["assets"], "security": [], "parameters": [{ "$ref": "#/components/parameters/AssetId" }], "responses": { "200": { "$ref": "#/components/responses/Asset" }, "403": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" } } },
+      "delete": { "operationId": "deleteAsset", "tags": ["assets"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }, { "$ref": "#/components/parameters/AssetId" }], "responses": { "204": { "description": "Asset logically deleted" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/assets/{asset_id}/download-url": {
+      "post": { "operationId": "createAssetDownloadUrl", "tags": ["assets"], "security": [], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }, { "$ref": "#/components/parameters/AssetId" }], "responses": { "200": { "$ref": "#/components/responses/DownloadUrl" }, "403": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/analyses": {
+      "post": { "operationId": "createReferenceAnalysis", "tags": ["analysis"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/ReferenceDescription" }, "responses": { "200": { "$ref": "#/components/responses/ReferenceDescription" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" }, "429": { "$ref": "#/components/responses/Error" }, "502": { "$ref": "#/components/responses/Error" }, "503": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/generations": {
+      "post": { "operationId": "createGeneration", "tags": ["generations"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/GenerationCreate" }, "responses": { "202": { "$ref": "#/components/responses/GenerationAccepted" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/generations/{generation_id}": {
+      "get": { "operationId": "getGeneration", "tags": ["generations"], "security": [{ "sessionCookie": [] }], "parameters": [{ "$ref": "#/components/parameters/GenerationId" }], "responses": { "200": { "$ref": "#/components/responses/Generation" }, "401": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/generations/{generation_id}/outputs": {
+      "get": { "operationId": "listGenerationOutputs", "tags": ["generations"], "security": [{ "sessionCookie": [] }], "parameters": [{ "$ref": "#/components/parameters/GenerationId" }], "responses": { "200": { "$ref": "#/components/responses/AssetPage" }, "401": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/me/generations": {
+      "get": { "operationId": "listMyGenerations", "tags": ["generations"], "security": [{ "sessionCookie": [] }], "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/GenerationPage" }, "401": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/generations/{generation_id}/retry": {
+      "post": { "operationId": "retryGeneration", "tags": ["generations"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }, { "$ref": "#/components/parameters/GenerationId" }], "responses": { "202": { "$ref": "#/components/responses/GenerationAccepted" }, "401": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/shares": {
+      "post": { "operationId": "createShare", "tags": ["shares"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/ShareCreate" }, "responses": { "201": { "$ref": "#/components/responses/Share" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/shares/{slug}": {
+      "get": { "operationId": "getShare", "tags": ["shares"], "security": [], "parameters": [{ "$ref": "#/components/parameters/Slug" }], "responses": { "200": { "$ref": "#/components/responses/Share" }, "404": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/feedback": {
+      "post": { "operationId": "createFeedback", "tags": ["feedback"], "security": [{ "sessionCookie": [] }], "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/FeedbackCreate" }, "responses": { "201": { "$ref": "#/components/responses/Feedback" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/health/live": {
+      "get": { "operationId": "healthLive", "tags": ["health"], "security": [], "responses": { "200": { "$ref": "#/components/responses/Health" } } }
+    },
+    "/api/v1/health/ready": {
+      "get": { "operationId": "healthReady", "tags": ["health"], "security": [], "responses": { "200": { "$ref": "#/components/responses/Health" }, "503": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/internal/providers/{provider_name}/webhook": {
+      "post": { "operationId": "providerWebhook", "tags": ["internal"], "security": [{ "providerSignature": [] }], "x-internal": true, "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/ProviderName" }, { "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/JsonObject" }, "responses": { "202": { "$ref": "#/components/responses/Accepted" }, "401": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/admin/generations": {
+      "get": { "operationId": "adminListGenerations", "tags": ["admin"], "security": [{ "sessionCookie": [] }], "x-internal": true, "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/GenerationPage" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/admin/generations/{generation_id}": {
+      "get": { "operationId": "adminGetGeneration", "tags": ["admin"], "security": [{ "sessionCookie": [] }], "x-internal": true, "parameters": [{ "$ref": "#/components/parameters/GenerationId" }], "responses": { "200": { "$ref": "#/components/responses/Generation" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "404": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/admin/generations/{generation_id}/review-resolution": {
+      "post": { "operationId": "resolveGenerationReview", "tags": ["admin"], "security": [{ "sessionCookie": [] }], "x-internal": true, "x-idempotent": true, "parameters": [{ "$ref": "#/components/parameters/GenerationId" }, { "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/ReviewResolution" }, "responses": { "200": { "$ref": "#/components/responses/Generation" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "409": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/admin/point-ledger": {
+      "get": { "operationId": "adminListPointLedger", "tags": ["admin"], "security": [{ "sessionCookie": [] }], "x-internal": true, "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/PointLedgerPage" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/api/v1/admin/provider-attempts": {
+      "get": { "operationId": "adminListProviderAttempts", "tags": ["admin"], "security": [{ "sessionCookie": [] }], "x-internal": true, "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/Json" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": { "type": "apiKey", "in": "cookie", "name": "session" },
+      "providerSignature": { "type": "apiKey", "in": "header", "name": "X-Provider-Signature" }
+    },
+    "parameters": {
+      "AssetId": { "name": "asset_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "GenerationId": { "name": "generation_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "ProviderName": { "name": "provider_name", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 64 } },
+      "Slug": { "name": "slug", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 128 } },
+      "Cursor": { "name": "cursor", "in": "query", "required": false, "schema": { "type": "string" } },
+      "Limit": { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 128 } }
+    },
+    "requestBodies": {
+      "InviteRedeem": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["invite_code", "email"], "properties": { "invite_code": { "type": "string", "minLength": 1, "maxLength": 128 }, "email": { "type": "string", "format": "email" } }, "additionalProperties": false } } } },
+      "EmailRequest": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email"], "properties": { "email": { "type": "string", "format": "email" } }, "additionalProperties": false } } } },
+      "EmailVerify": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["token"], "properties": { "token": { "type": "string", "minLength": 1, "maxLength": 512 } }, "additionalProperties": false } } } },
+      "UpdateMe": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateMeRequest" } } } },
+      "UploadIntent": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UploadIntent" } } } },
+      "ReferenceDescription": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReferenceDescriptionRequest" } } } },
+      "GenerationCreate": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenerationCreateRequest" } } } },
+      "ShareCreate": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ShareCreateRequest" } } } },
+      "FeedbackCreate": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FeedbackCreateRequest" } } } },
+      "ReviewResolution": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["decision", "note"], "properties": { "decision": { "type": "string", "enum": ["CONSUME", "RELEASE"] }, "note": { "type": "string", "maxLength": 2000 } }, "additionalProperties": false } } } },
+      "JsonObject": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": true } } } }
+    },
+    "responses": {
+      "Error": { "description": "Stable API error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "Accepted": { "description": "Accepted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+      "InviteRedeemed": { "description": "User, session and credited points", "headers": { "Set-Cookie": { "schema": { "type": "string" } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+      "User": { "description": "User", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserEnvelope" } } } },
+      "Session": { "description": "Session", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionEnvelope" } } } },
+      "PointBalance": { "description": "Point balance", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PointBalanceEnvelope" } } } },
+      "PointLedgerPage": { "description": "Point ledger page", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageEnvelope" } } } },
+      "Asset": { "description": "Media asset", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AssetEnvelope" } } } },
+      "AssetUpload": { "description": "Upload intent", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+      "DownloadUrl": { "description": "Short-lived download URL", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+      "ReferenceDescription": { "description": "Image description", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+      "GenerationAccepted": { "description": "Generation queued", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenerationEnvelope" } } } },
+      "Generation": { "description": "Generation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenerationEnvelope" } } } },
+      "GenerationPage": { "description": "Generation page", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageEnvelope" } } } },
+      "AssetPage": { "description": "Asset page", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageEnvelope" } } } },
+      "Share": { "description": "Share", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ShareEnvelope" } } } },
+      "Feedback": { "description": "Feedback", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+      "Health": { "description": "Health response", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthEnvelope" } } } },
+      "Json": { "description": "JSON result", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } }
+    },
+    "schemas": {
+      "Envelope": { "type": "object", "required": ["data", "request_id"], "properties": { "data": {}, "request_id": { "type": "string" } } },
+      "ErrorResponse": { "type": "object", "required": ["error", "request_id"], "properties": { "error": { "$ref": "#/components/schemas/Error" }, "request_id": { "type": "string" } } },
+      "Error": { "type": "object", "required": ["code", "message", "details"], "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "details": { "type": "object", "additionalProperties": true } } },
+      "User": { "type": "object", "required": ["id", "status", "locale", "timezone", "email_verified"], "properties": { "id": { "type": "string", "format": "uuid" }, "display_name": { "type": ["string", "null"], "maxLength": 80 }, "avatar_asset_id": { "type": ["string", "null"], "format": "uuid" }, "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "DELETED"] }, "locale": { "type": "string", "maxLength": 16 }, "timezone": { "type": "string", "maxLength": 64 }, "primary_email": { "type": ["string", "null"], "format": "email" }, "email_verified": { "type": "boolean" }, "created_at": { "type": "string", "format": "date-time" }, "updated_at": { "type": "string", "format": "date-time" } } },
+      "Session": { "type": "object", "required": ["session_id", "user_id", "email_verified", "expires_at"], "properties": { "session_id": { "type": "string" }, "user_id": { "type": "string", "format": "uuid" }, "email_verified": { "type": "boolean" }, "expires_at": { "type": "string", "format": "date-time" } } },
+      "PointBalance": { "type": "object", "required": ["available_points", "reserved_points", "lifetime_credited", "lifetime_consumed", "updated_at"], "properties": { "available_points": { "type": "integer", "minimum": 0 }, "reserved_points": { "type": "integer", "minimum": 0 }, "lifetime_credited": { "type": "integer", "minimum": 0 }, "lifetime_consumed": { "type": "integer", "minimum": 0 }, "updated_at": { "type": "string", "format": "date-time" } } },
+      "Asset": { "type": "object", "required": ["id", "asset_type", "purpose", "status", "visibility", "mime_type", "size_bytes", "sha256"], "properties": { "id": { "type": "string", "format": "uuid" }, "asset_type": { "type": "string", "enum": ["ORIGINAL", "REFERENCE", "RESULT"] }, "purpose": { "type": "string", "enum": ["SOURCE", "REFERENCE", "RESULT"] }, "status": { "type": "string", "enum": ["PENDING_UPLOAD", "READY", "DELETED", "EXPIRED"] }, "visibility": { "type": "string", "enum": ["PRIVATE", "SHARED", "PUBLIC"] }, "mime_type": { "type": "string" }, "size_bytes": { "type": "integer", "minimum": 0 }, "width": { "type": ["integer", "null"] }, "height": { "type": ["integer", "null"] }, "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }, "expires_at": { "type": ["string", "null"], "format": "date-time" }, "created_at": { "type": "string", "format": "date-time" } } },
+      "Generation": { "type": "object", "required": ["id", "mode", "status", "billing_status", "prompt", "requested_count", "reserved_points"], "properties": { "id": { "type": "string", "format": "uuid" }, "parent_generation_id": { "type": ["string", "null"], "format": "uuid" }, "mode": { "type": "string", "enum": ["PHOTO_PROMPT", "TEXT_PROMPT", "REFERENCE_IMAGE"] }, "status": { "type": "string", "enum": ["CREATED", "QUEUED", "PROCESSING", "SUCCEEDED", "FAILED", "NEEDS_REVIEW"] }, "billing_status": { "type": "string", "enum": ["RESERVED", "CONSUMED", "RELEASED"] }, "prompt": { "type": "string" }, "requested_count": { "type": "integer", "const": 2 }, "reserved_points": { "type": "integer", "minimum": 0 }, "failure_code": { "type": ["string", "null"] }, "created_at": { "type": "string", "format": "date-time" }, "updated_at": { "type": "string", "format": "date-time" } } },
+      "UpdateMeRequest": { "type": "object", "properties": { "display_name": { "type": ["string", "null"], "maxLength": 80 }, "avatar_asset_id": { "type": ["string", "null"], "format": "uuid" }, "locale": { "type": "string", "maxLength": 16 }, "timezone": { "type": "string", "maxLength": 64 } }, "additionalProperties": false },
+      "UploadIntent": { "type": "object", "required": ["purpose", "filename", "mime_type", "size_bytes", "sha256"], "properties": { "purpose": { "type": "string", "enum": ["SOURCE", "REFERENCE"] }, "filename": { "type": "string", "maxLength": 255 }, "mime_type": { "type": "string" }, "size_bytes": { "type": "integer", "minimum": 1 }, "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" } }, "additionalProperties": false },
+      "GenerationCreateRequest": { "type": "object", "required": ["mode", "prompt", "input_asset_ids", "output_count"], "properties": { "mode": { "type": "string", "enum": ["PHOTO_PROMPT", "TEXT_PROMPT", "REFERENCE_IMAGE"] }, "style_id": { "type": ["string", "null"], "format": "uuid" }, "prompt_template_id": { "type": ["string", "null"], "format": "uuid" }, "prompt": { "type": "string", "minLength": 1 }, "input_asset_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } }, "output_count": { "type": "integer", "const": 2 } }, "additionalProperties": false },
+      "ReferenceDescriptionRequest": { "type": "object", "required": ["asset_id"], "properties": { "asset_id": { "type": "string", "format": "uuid" } }, "additionalProperties": false },
+      "ShareCreateRequest": { "type": "object", "required": ["generation_id", "output_asset_ids"], "properties": { "generation_id": { "type": "string", "format": "uuid" }, "output_asset_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } }, "title": { "type": ["string", "null"], "maxLength": 160 } }, "additionalProperties": false },
+      "FeedbackCreateRequest": { "type": "object", "required": ["generation_id", "rating", "category"], "properties": { "generation_id": { "type": "string", "format": "uuid" }, "rating": { "type": "integer", "minimum": 1, "maximum": 5 }, "category": { "type": "string", "maxLength": 64 }, "content": { "type": ["string", "null"], "maxLength": 2000 } }, "additionalProperties": false },
+      "GenerationEnvelope": { "allOf": [{ "$ref": "#/components/schemas/Envelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Generation" } } }] },
+      "UserEnvelope": { "allOf": [{ "$ref": "#/components/schemas/Envelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/User" } } }] },
+      "SessionEnvelope": { "allOf": [{ "$ref": "#/components/schemas/Envelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Session" } } }] },
+      "PointBalanceEnvelope": { "allOf": [{ "$ref": "#/components/schemas/Envelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PointBalance" } } }] },
+      "AssetEnvelope": { "allOf": [{ "$ref": "#/components/schemas/Envelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Asset" } } }] },
+      "ShareEnvelope": { "allOf": [{ "$ref": "#/components/schemas/Envelope" }, { "type": "object", "properties": { "data": { "type": "object" } } }] },
+      "HealthEnvelope": { "allOf": [{ "$ref": "#/components/schemas/Envelope" }, { "type": "object", "properties": { "data": { "type": "object", "properties": { "status": { "type": "string" } } } } }] },
+      "PageEnvelope": { "type": "object", "required": ["data", "page", "request_id"], "properties": { "data": { "type": "array", "items": {} }, "page": { "type": "object", "required": ["next_cursor", "has_more"], "properties": { "next_cursor": { "type": ["string", "null"] }, "has_more": { "type": "boolean" } } }, "request_id": { "type": "string" } } }
+    }
+  }
+}

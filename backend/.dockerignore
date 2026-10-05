@@ -1,0 +1,22 @@
+# 构建上下文是 `backend/`（见 `docker/compose.yml` 的 `build.context`）。
+# 排除测试、缓存与本地虚拟环境：它们既不需要进镜像，也会让构建上下文无谓变大。
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 测试不进运行镜像（`ENG-10` 的 E2E 在宿主机/独立容器里跑，不依赖镜像内测试）
+tests/
+
+# 本地虚拟环境与本地运行数据
+.venv/
+venv/
+data/
+*.log
+
+# 绝不进镜像：环境文件与密钥
+.env
+.env.*
